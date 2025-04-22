@@ -9,8 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "com.mdb.syllo"
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "web": {
       "bundler": "metro",
@@ -36,6 +35,6 @@
       "eas": {
         "projectId": "f51542de-3e95-496f-8999-548e766abf28"
       }
-    },
+    }
   }
 }
