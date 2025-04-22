@@ -9,13 +9,11 @@ export default function App() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    GoogleSignin.configure({
-      iosClientId: '947328820784-c6i3vp6th2m5aqd04qg7c1go36lb42jd.apps.googleusercontent.com',
-    });
+    GoogleSignin.configure({});
 
     (async () => {
       try {
-        const isSignedIn = await GoogleSignin.isSignedIn();
+        const isSignedIn = await GoogleSignin.isSignedIn;
         if (isSignedIn) {
           const userInfo = await GoogleSignin.getCurrentUser();
           setUser(userInfo);

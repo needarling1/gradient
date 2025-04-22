@@ -9,25 +9,26 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.frontend"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.anonymous.frontend"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.mdb.syllo"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["@react-native-google-signin/google-signin"],
-    "ios": {
-      "googleServicesFile": "./GoogleService-Info.plist"
-    },
+    "plugins": [
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },
@@ -35,6 +36,6 @@
       "eas": {
         "projectId": "f51542de-3e95-496f-8999-548e766abf28"
       }
-    }
+    },
   }
 }
