@@ -1,21 +1,44 @@
-import { Text, View } from "react-native";
-import HomeScreen from "./components/HomeScreen";
-import MajorTrackerScreen from "./components/MajorTrackerScreen";
-import ToDoScreen from "./components/ToDoScreen";
-import ProfileScreen from "./components/ProfileScreen";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import Login from './components/Login';
+import AppContent from './AppContent'; 
 
 export default function App() {
-  const TabNav = createBottomTabNavigator();
-  return (
-    <NavigationContainer>
-      <TabNav.Navigator>
-        <TabNav.Screen name = "Home" component={HomeScreen} options={{ headerShown: false }}/>
-        <TabNav.Screen name = "To Do" component={ToDoScreen} options={{ headerShown: false }}/>
-        <TabNav.Screen name = "Major Tracker" component={MajorTrackerScreen} options={{ headerShown: false }}/>
-        <TabNav.Screen name = "Profile" component={ProfileScreen} options={{ headerShown: false }}/>
-      </TabNav.Navigator>
-    </NavigationContainer>
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      iosClientId: '947328820784-c6i3vp6th2m5aqd04qg7c1go36lb42jd.apps.googleusercontent.com',
+    });
+
+    (async () => {
+      try {
+        const isSignedIn = await GoogleSignin.isSignedIn();
+        if (isSignedIn) {
+          const userInfo = await GoogleSignin.getCurrentUser();
+          setUser(userInfo);
+        }
+      } catch (e) {
+        console.log('Error checking sign-in:', e);
+      } finally {
+        setChecking(false);
+      }
+    })();
+  }, []);
+
+  if (checking) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return user ? (
+    <AppContent user={user} onSignOut={() => setUser(null)} />
+  ) : (
+    <Login onLogin={(u) => setUser(u)} />
   );
 }
