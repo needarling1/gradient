@@ -9,7 +9,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.mdb.syllo"
+    },
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "bundleIdentifier": "com.mdb.syllo",
+      "package": "com.mdb.syllo"
     },
     "web": {
       "bundler": "metro",
