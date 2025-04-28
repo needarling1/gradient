@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "817318853256",
+    "project_id": "syllo-341ed",
+    "storage_bucket": "syllo-341ed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:817318853256:android:931ae952c4b3e08a717d3d",
+        "android_client_info": {
+          "package_name": "com.mdb.syllo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "817318853256-b112v47o0ivjconailmavhhovf54cv8o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0bJ4Nz_jzZq3oe0DhlubRWtETMzQHgQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "817318853256-4q5u1t8o277kt39a57gfvms6q56ueg2b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "817318853256-trn21d6ise3lh5sb1bcn3cfo49665212.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mdb.syllo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -37,6 +37,22 @@ yarn-error.*
 
 app-example
 
+# iOS
+ios/build/
+ios/Pods/
+ios/DerivedData/
+*.xcuserdata
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.hmap
+*.ipa
+*.xcuserstate
+*.xccheckout
 
-google-services.json
-Info.plist
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+android/.idea/
+
