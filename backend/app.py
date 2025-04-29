@@ -133,10 +133,11 @@ async def get_user_course(user_id: str, class_name: str):
 
     
 CANVAS_API_URL = "https://bcourses.berkeley.edu/api/v1"
+PAT = env.get('PAT')
 
 async def fetch_all_courses():
     headers = {
-        "Authorization": f"Bearer {env.get("PAT")}",
+        "Authorization": f"Bearer {PAT}",
         "Content-Type": "application/json",
     }
     params = {
