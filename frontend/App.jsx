@@ -8,7 +8,6 @@ import {
 } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 import AppContent from './AppContent';
-import LandingScreen from './components/LandingScreen';
 
 const index = () => {
   const [initializing, setInitializing] = useState(true);
@@ -42,7 +41,7 @@ const index = () => {
 
   async function createUserIfNotExists(user) {
     try {
-      const response = await fetch('http://10.2.115.245:8000/create_user', {
+      const response = await fetch('http://10.2.14.234:8000/create_user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,11 +77,15 @@ const index = () => {
 
   if (initializing) return null;
 
-
-  console.log(user);
   if (!user) {
     return (
-      <LandingScreen onSignIn={signIn} />
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <GoogleSigninButton
+          size={GoogleSigninButton.Size.Wide}
+          color={GoogleSigninButton.Color.Dark}
+          onPress={signIn}
+        />
+      </SafeAreaView>
     )
   }
 

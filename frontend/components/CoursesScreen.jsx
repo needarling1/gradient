@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 
-const CoursesScreen = ( {user} ) => {
+const CoursesScreen = ({ user }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
@@ -20,9 +20,8 @@ const CoursesScreen = ( {user} ) => {
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
-    }    
+    }
   }
-  
 
   useEffect(() => {
     fetchCourses(user);
@@ -31,18 +30,19 @@ const CoursesScreen = ( {user} ) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Classes</Text>
+
       <ScrollView contentContainerStyle={styles.buttonContainer}>
-      {courses.map((course) => (
-        <TouchableOpacity
-          key={course.id}
-          style={styles.button}
-          onPress={() => navigation.navigate('CourseDetails', { id: course.id, className: course.course_code })}
-        >
-          <Text style={styles.buttonText}>
-            {course.course_code.replace('_', ' ')}
-          </Text>
-        </TouchableOpacity>
-      ))}
+        {courses.map((course) => (
+          <TouchableOpacity
+            key={course.id}
+            style={styles.button}
+            onPress={() => navigation.navigate('CourseDetails', { id: course.id, className: course.course_code })}
+          >
+            <Text style={styles.buttonText}>
+              {course.course_code.replace('_', ' ')}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
@@ -50,19 +50,22 @@ const CoursesScreen = ( {user} ) => {
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: '#fff' 
+    flex: 1,
+    justifyContent: 'center',  // ⬅️ center vertically
+    alignItems: 'center',       // ⬅️ center horizontally
+    paddingTop: 80,
+    padding: 20,
+    backgroundColor: '#fff',
   },
   title: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 20, 
-    textAlign: 'center' 
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   buttonContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingBottom: 50,
   },
   button: {
     backgroundColor: '#007AFF',
@@ -70,7 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     marginVertical: 10,
-    width: '80%',
+    width: 250,              // ⬅️ Wider buttons look better centered
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.2,

@@ -3,17 +3,16 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import * as DocumentPicker from 'expo-document-picker';
 
 const CourseDetailsScreen = ({ user, route }) => {
-  console.log(route)
   const { className, id } = route.params;
-  console.log(id)
   const [courseDetails, setCourseDetails] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [loadingCourseDetails, setLoadingCourseDetails] = useState(true); //
-
+  const [loadingCourseDetails, setLoadingCourseDetails] = useState(true);
+  const [assignments, setAssignments] = useState([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
 
   useEffect(() => {
     fetchCourseDetails();
-    fetchAssignments(id);
+    fetchAssignments(id, user.id);
   }, [className]);
 
   const fetchCourseDetails = async () => {
@@ -50,12 +49,21 @@ const CourseDetailsScreen = ({ user, route }) => {
     }
   };
 
-  const fetchAssignments = async (courseId) => {
-    const response = await fetch(`http://10.2.14.234:8000/get_assignments?course_id=${courseId}`);
-    const data = await response.json();
-    console.log('Assignments:', data.assignments);
+  const fetchAssignments = async (courseId, userId) => {
+    try {
+      setLoadingAssignments(true);
+      setAssignments([]);
+      const response = await fetch(`http://10.2.14.234:8000/get_assignments?course_id=${courseId}&user_id=${userId}`);
+      const data = await response.json();
+      console.log(data.assignments)
+      setAssignments(data.assignments);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+    } finally {
+      setLoadingAssignments(false);
+    }
   };
-  
+
 
   const uploadFile = async (file) => {
     try {
@@ -70,7 +78,7 @@ const CourseDetailsScreen = ({ user, route }) => {
       formData.append('user_id', user.uid);
       formData.append('class_name', className);
 
-      const response = await fetch('http://10.40.137.71:8000/syllabus-parse', {
+      const response = await fetch('http://10.2.14.234:8000/syllabus-parse', {
         method: 'POST',
         body: formData,
         headers: {
@@ -93,8 +101,23 @@ const CourseDetailsScreen = ({ user, route }) => {
     }
   };
 
-  // While loading course details from Firestore
-  if (loadingCourseDetails) {
+  const AssignmentItem = ({ assignment }) => {
+    return (
+      <View style={styles.assignmentCard}>
+        <Text style={styles.assignmentTitle}>{assignment.name}</Text>
+        {assignment.score !== undefined ? (
+          <Text style={styles.assignmentScore}>
+            {assignment.score} / {assignment.points_possible}
+          </Text>
+        ) : (
+          <Text style={styles.assignmentScore}>Not yet graded</Text>
+        )}
+      </View>
+    );
+  };
+  
+
+  if (loadingCourseDetails || loadingAssignments) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -102,11 +125,18 @@ const CourseDetailsScreen = ({ user, route }) => {
     );
   }
 
-  // No course details found after loading
-  if (!courseDetails) {
     return (
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.courseTitle}>{className.replace('_', ' ')}</Text>
+
+        {assignments && assignments.length > 0 ? (
+          assignments.map((assignment, index) => (
+            <AssignmentItem key={index} assignment={assignment} />
+          ))
+        ) : (
+          <Text>No assignments found.</Text>
+        )}
+
         <TouchableOpacity
           onPress={pickDocument}
           style={[styles.uploadButton, { marginTop: 30 }]}
@@ -118,23 +148,9 @@ const CourseDetailsScreen = ({ user, route }) => {
             <Text style={styles.buttonText}>Upload Syllabus File</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     );
   }
-
-  // Course details found
-  return (
-    <View style={styles.container}>
-      <Text style={styles.courseTitle}>{courseDetails.course_name}</Text>
-      <ScrollView contentContainerStyle={styles.detailsContainer}>
-        <Section title="Emails" data={courseDetails.emails} />
-        <Section title="Grade Breakdown" data={courseDetails.grade_breakdown} />
-        <Section title="Important Dates" data={courseDetails.important_dates} />
-        <Section title="Office Hours" data={courseDetails.office_hours} />
-      </ScrollView>
-    </View>
-  );
-};
 
 const formatKey = (key) => {
   return key
@@ -161,7 +177,11 @@ const Section = ({ title, data }) => {
 
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  container: { flexGrow: 1,
+    padding: 20,
+    paddingTop: 80,
+    backgroundColor: '#fff',
+    paddingBottom: 100},
   courseTitle: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginVertical: 20 },
   detailsContainer: { paddingBottom: 50 },
   section: { marginBottom: 20 },
@@ -178,6 +198,29 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  assignmentCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 16,
+    marginBottom: 15,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  
+  assignmentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  
+  assignmentScore: {
+    fontSize: 16,
+    color: '#555',
+  },  
 });
 
 export default CourseDetailsScreen;
