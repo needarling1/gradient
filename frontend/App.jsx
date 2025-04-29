@@ -1,3 +1,4 @@
+
 import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import {
@@ -8,10 +9,19 @@ import {
 } from '@react-native-google-signin/google-signin';
 import auth from '@react-native-firebase/auth';
 import AppContent from './AppContent';
+import LandingScreen from './components/LandingScreen';
+import SplashScreen from './components/SplashScreen';
+import Animated, { SlideInUp } from 'react-native-reanimated';
+import OnboardingNavigator from './components/OnboardingNav';
+import { NavigationContainer } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 const index = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState();
+  const [showSplash, setShowSplash] = useState(true);
+  const [userProfile, setUserProfile] = useState(null);
+  const [hasOnboarded, setHasOnboarded] = useState(null); 
 
   GoogleSignin.configure({
     webClientId: '817318853256-4q5u1t8o277kt39a57gfvms6q56ueg2b.apps.googleusercontent.com',
@@ -67,31 +77,52 @@ const index = () => {
     if (initializing) setInitializing(false);
   }
 
-  
-
-
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-    return subscriber;
+
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000);
+
+    const checkOnboardingStatus = async () => {
+      const onboarded = await AsyncStorage.getItem('hasOnboarded'); // ✅ NEW
+      setHasOnboarded(onboarded === 'true');
+    };
+
+    checkOnboardingStatus(); // ✅ NEW
+
+    return () => {
+      subscriber();
+      clearTimeout(splashTimer);
+    };
   }, []);
 
-  if (initializing) return null;
+  if (initializing || showSplash || hasOnboarded === null) return <SplashScreen />; // ✅ MODIFIED
 
   if (!user) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <GoogleSigninButton
-          size={GoogleSigninButton.Size.Wide}
-          color={GoogleSigninButton.Color.Dark}
-          onPress={signIn}
+      <Animated.View entering={SlideInUp.duration(800)} style={{ flex: 1 }}>
+        <LandingScreen onSignIn={signIn} />
+      </Animated.View>
+    );
+  }
+
+  if (user && !hasOnboarded) { // ✅ MODIFIED
+    return (
+      <NavigationContainer>
+        <OnboardingNavigator
+          onComplete={(profile) => {
+            setUserProfile(profile);
+            setHasOnboarded(true); // ✅ NEW
+          }}
         />
-      </SafeAreaView>
-    )
+      </NavigationContainer>
+    );
   }
 
   return (
-    <AppContent user={user}/>
+    <AppContent user={user} userProfile={userProfile} />
   );
 }
 
-export default index
+export default index;
