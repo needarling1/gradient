@@ -32,7 +32,7 @@ export default function AppContent({ user }) {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: 'tomato',
+          tabBarActiveTintColor: '#3B82F6',
           tabBarInactiveTintColor: 'gray',
         })}
       >
