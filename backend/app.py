@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, File, UploadFile, Query, Form
 from starlette.middleware.cors import CORSMiddleware
 from firebase_config import db
-from fastapi import File, UploadFile, Query, Form
 from io import BytesIO
 import PyPDF2
 import os
@@ -194,30 +193,79 @@ async def get_user_courses(user_id: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user courses: {str(e)}")
     
-@app.get("/get_assignments")
-async def get_assignments(course_id: str = Query(...)):
-    """
-    Fetch all assignments (graded or ungraded) for the specified Canvas course.
-    """
+async def fetch_assignments_with_submissions(course_id: str, user_id: str):
     headers = {
         "Authorization": f"Bearer {PAT}",
         "Content-Type": "application/json",
     }
-
+    params = {
+        "include[]": "submission", 
+        "student_ids[]": user_id,
+        "per_page": 100
+    }
     url = f"{CANVAS_API_URL}/courses/{course_id}/assignments"
 
+    all_assignments = []
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        retries = 0
+        max_retries = 3
+        
+        while url:
+            try:
+                response = await client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+
+                data = response.json()
+                if isinstance(data, list):
+                    all_assignments.extend(data)
+                else:
+                    raise ValueError("Unexpected data format, expected a list.")
+
+                # Pagination handling
+                link_header = response.headers.get('link')
+                url = None
+                if link_header:
+                    links = link_header.split(',')
+                    for link in links:
+                        if 'rel="next"' in link:
+                            url = link[link.find('<')+1:link.find('>')]
+                            params = {}  # Clear params when following next URL
+                            break
+                retries = 0  # Reset retries after successful page fetch
+            except (httpx.HTTPError, ValueError) as e:
+                retries += 1
+                if retries > max_retries:
+                    raise HTTPException(status_code=502, detail=f"Failed fetching assignments after retries: {str(e)}")
+                await asyncio.sleep(1.5 * retries)  # Exponential backoff
+
+    return all_assignments
+
+@app.get("/get_assignments")
+async def get_assignments(course_id: str = Query(...), user_id: str = Query(...)):
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers)
-            print(f"Request URL: {url}")
-            print(f"Status Code: {response.status_code}")
-            print(f"Response Text: {response.text}")
+        assignments = await fetch_assignments_with_submissions(course_id, user_id)
 
-        if response.status_code != 200:
-            raise HTTPException(status_code=response.status_code, detail="Failed to fetch assignments from Canvas")
+        final_assignments = []
 
-        assignments = response.json()
-        return {"assignments": assignments}
+        for assignment in assignments:
+            base_info = {
+                "id": assignment.get("id"),
+                "name": assignment.get("name"),
+                "points_possible": assignment.get("points_possible"),
+                "due_at": assignment.get("due_at"),
+            }
+
+            # Safely handle missing submission
+            submission = assignment.get("submission")
+            if submission:
+                score = submission.get("score")
+                if score is not None:
+                    base_info["score"] = score
+
+            final_assignments.append(base_info)
+
+        return {"assignments": final_assignments}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching assignments: {str(e)}")
