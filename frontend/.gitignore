@@ -41,6 +41,7 @@ app-example
 ios/build/
 ios/Pods/
 ios/DerivedData/
+ios/frontend.xcodeproj/project.pbxproj
 *.xcuserdata
 *.xcuserstate
 *.xcworkspace/xcuserdata/
