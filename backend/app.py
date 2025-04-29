@@ -132,13 +132,11 @@ async def get_user_course(user_id: str, class_name: str):
         raise HTTPException(status_code=500, detail=f"Error fetching user course: {str(e)}")
 
     
-PAT = "1072~Nx2fw7VXFTARmkfuFKQcmQH34zQ7kxGuz46F9EEXF8ZkhaM7wTywkf4cTTkKmAVk"
-
 CANVAS_API_URL = "https://bcourses.berkeley.edu/api/v1"
 
 async def fetch_all_courses():
     headers = {
-        "Authorization": f"Bearer {PAT}",
+        "Authorization": f"Bearer {env.get("PAT")}",
         "Content-Type": "application/json",
     }
     params = {
