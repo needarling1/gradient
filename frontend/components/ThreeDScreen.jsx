@@ -38,8 +38,10 @@ export default function ThreeDScreen({ image }) {
 
   const onContextCreate = async (gl) => {
     const scene = new Scene();
+    scene.background = null; // Make scene background transparent
     const camera = new PerspectiveCamera(75, gl.drawingBufferWidth / gl.drawingBufferHeight, 0.1, 1000);
-    const renderer = new Renderer({ gl });
+    const renderer = new Renderer({ gl, alpha: true }); // Enable alpha
+    renderer.setClearColor(0x000000, 0); // Fully transparent
     renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
 
     // Load the texture using expo-three's helper
@@ -79,6 +81,8 @@ export default function ThreeDScreen({ image }) {
       <GLView
         style={styles.glView}
         onContextCreate={onContextCreate}
+        // Make GLView transparent
+        pointerEvents="box-none"
       />
     </View>
   );
@@ -87,9 +91,10 @@ export default function ThreeDScreen({ image }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'transparent',
   },
   glView: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
 }); 
