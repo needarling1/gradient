@@ -20,7 +20,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["exp://10.40.137.71:8081/"],
+    allow_origins=["exp://10.2.14.234:8081/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -157,7 +157,6 @@ async def fetch_all_courses():
             
             courses = response.json()
             all_courses.extend(courses)
-
             link = response.headers.get("Link")
             url = None
             if link:
@@ -168,7 +167,6 @@ async def fetch_all_courses():
                         break 
 
             params = {}
-
     return all_courses
 
 @app.get("/get_user_courses")
@@ -184,17 +182,42 @@ async def get_user_courses(user_id: str = Query(...)):
                 return user_data["classes"]
 
         all_courses = await fetch_all_courses()
-
         spring_2025_courses = [course for course in all_courses if course.get("enrollment_term_id") == 5646]
 
-        course_codes = [course.get("course_code") for course in spring_2025_courses if course.get("course_code")]
-
         user_doc_ref.set({
-            "classes": course_codes
+            "classes": spring_2025_courses
         }, merge=True)
 
-        print(f"Stored {len(course_codes)} classes for user {user_id}")
-        return course_codes
+        print(f"Stored {len(spring_2025_courses)} classes for user {user_id}")
+        return spring_2025_courses
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user courses: {str(e)}")
+    
+@app.get("/get_assignments")
+async def get_assignments(course_id: str = Query(...)):
+    """
+    Fetch all assignments (graded or ungraded) for the specified Canvas course.
+    """
+    headers = {
+        "Authorization": f"Bearer {PAT}",
+        "Content-Type": "application/json",
+    }
+
+    url = f"{CANVAS_API_URL}/courses/{course_id}/assignments"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+            print(f"Request URL: {url}")
+            print(f"Status Code: {response.status_code}")
+            print(f"Response Text: {response.text}")
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="Failed to fetch assignments from Canvas")
+
+        assignments = response.json()
+        return {"assignments": assignments}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching assignments: {str(e)}")

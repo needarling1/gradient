@@ -3,19 +3,23 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import * as DocumentPicker from 'expo-document-picker';
 
 const CourseDetailsScreen = ({ user, route }) => {
-  const { className } = route.params;
+  console.log(route)
+  const { className, id } = route.params;
+  console.log(id)
   const [courseDetails, setCourseDetails] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [loadingCourseDetails, setLoadingCourseDetails] = useState(true); // <--- new
+  const [loadingCourseDetails, setLoadingCourseDetails] = useState(true); //
+
 
   useEffect(() => {
     fetchCourseDetails();
+    fetchAssignments(id);
   }, [className]);
 
   const fetchCourseDetails = async () => {
     try {
       setLoadingCourseDetails(true);
-      const response = await fetch(`http://10.40.137.71:8000/user_course/${user.uid}/${className}`);
+      const response = await fetch(`http://10.2.14.234:8000/user_course/${user.uid}/${id}`);
       const data = await response.json();
       if (data.course_found) {
         setCourseDetails(data.course_data);
@@ -45,6 +49,13 @@ const CourseDetailsScreen = ({ user, route }) => {
       Alert.alert('Error', 'Failed to pick a file.');
     }
   };
+
+  const fetchAssignments = async (courseId) => {
+    const response = await fetch(`http://10.2.14.234:8000/get_assignments?course_id=${courseId}`);
+    const data = await response.json();
+    console.log('Assignments:', data.assignments);
+  };
+  
 
   const uploadFile = async (file) => {
     try {
