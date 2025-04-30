@@ -112,7 +112,7 @@ const index = () => {
     };
   }, []);
 
-  if (initializing || showSplash || hasOnboarded === null) return <SplashScreen />;
+  if (initializing || showSplash) return <SplashScreen />;
 
   if (!user) {
     return (

@@ -12,7 +12,10 @@ from firebase_admin import firestore
 from pydantic import BaseModel
 from gradescopeapi.classes.connection import GSConnection
 import asyncio
-from typing import Optional
+from typing import Optional, Union
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import status
 
 
 load_dotenv()
@@ -36,8 +39,8 @@ class OnboardingRequest(BaseModel):
     user_id: str
     firstName: str
     lastName: str
-    majors: list[str]
-    departments: list[str]
+    majors: Optional[Union[list[str], str, None]] = None
+    departments: Optional[Union[list[str], str, None]] = None
     gpa: str
     graduationYear: str
     bcourseToken: str
@@ -84,12 +87,25 @@ async def onboard_user(onboarding: OnboardingRequest):
         if not user_doc.exists:
             raise HTTPException(status_code=404, detail="User not found")
 
+        # Normalize majors and departments to lists of strings
+        def normalize_list(val):
+            if val is None:
+                return []
+            if isinstance(val, list):
+                return [str(x) for x in val if x is not None]
+            if isinstance(val, str):
+                return [val]
+            return []
+
+        majors = normalize_list(onboarding.majors)
+        departments = normalize_list(onboarding.departments)
+
         # Update user document with onboarding information
         user_ref.update({
             "firstName": onboarding.firstName,
             "lastName": onboarding.lastName,
-            "majors": onboarding.majors,
-            "departments": onboarding.departments,
+            "majors": majors,
+            "departments": departments,
             "gpa": onboarding.gpa,
             "graduationYear": onboarding.graduationYear,
             "bcourseToken": onboarding.bcourseToken,
@@ -99,6 +115,11 @@ async def onboard_user(onboarding: OnboardingRequest):
 
         return {"message": "User onboarding completed successfully"}
 
+    except RequestValidationError as ve:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": ve.errors(), "body": ve.body},
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating user: {str(e)}")
 

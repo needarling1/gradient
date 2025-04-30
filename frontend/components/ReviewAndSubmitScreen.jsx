@@ -64,10 +64,35 @@ export default function ReviewAndSubmitScreen({ navigation, formData, onComplete
       const flatten = (arr) => Array.isArray(arr) ? arr.flat(Infinity) : [];
       const payload = {
         user_id: userId,
-        ...formData,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         majors: Array.isArray(formData.majors) ? formData.majors : [],
         departments: flatten(formData.departments),
+        gpa: formData.gpa,
+        graduationYear: formData.graduationYear,
+        bcourseToken: formData.bcourseToken,
+        profileImage: formData.profileImage || null,
       };
+
+      // Debug: log each field and type
+      Object.entries(payload).forEach(([k, v]) => {
+        console.log(`${k}:`, v, '| type:', Array.isArray(v) ? 'array' : typeof v);
+      });
+
+      // Validate required fields
+      const requiredFields = ['user_id', 'firstName', 'lastName', 'majors', 'departments', 'gpa', 'graduationYear', 'bcourseToken'];
+      for (let field of requiredFields) {
+        if (
+          payload[field] === undefined ||
+          payload[field] === null ||
+          (Array.isArray(payload[field]) && payload[field].some(x => typeof x !== 'string')) ||
+          (!Array.isArray(payload[field]) && typeof payload[field] !== 'string' && field !== 'majors' && field !== 'departments')
+        ) {
+          Alert.alert('Error', `Field "${field}" is missing or of the wrong type. Value: ${JSON.stringify(payload[field])}`);
+          return;
+        }
+      }
+
       console.log('Submitting onboarding data:', payload);
 
       const response = await fetch(`${BACKEND_URL}/onboard_user`, {
