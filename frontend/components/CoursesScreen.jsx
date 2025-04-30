@@ -1,19 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 
 const CoursesScreen = ({ user }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [courseGrades, setCourseGrades] = useState({});
   const navigation = useNavigation();
 
-  async function fetchCourses(user) {
+  async function fetchCoursesAndGrades(user) {
     try {
       const response = await fetch(`http://10.2.14.245:8000/get_user_courses?user_id=${user.uid}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setCourses(data);
+        // Fetch predicted grades for each course
+        data.forEach(async (course) => {
+          try {
+            const resp = await fetch(`http://10.2.14.245:8000/user_course/${user.uid}/${course.course_code}`);
+            const courseData = await resp.json();
+            if (courseData.course_found && courseData.course_data && courseData.course_data.predicted_grade !== undefined) {
+              setCourseGrades(prev => ({ ...prev, [course.course_code]: courseData.course_data.predicted_grade }));
+            }
+          } catch (e) {
+            // Ignore errors for missing course details
+          }
+        });
       } else {
         console.error('Unexpected data format:', data);
         setCourses([]);
@@ -23,9 +36,11 @@ const CoursesScreen = ({ user }) => {
     }
   }
 
-  useEffect(() => {
-    fetchCourses(user);
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCoursesAndGrades(user);
+    }, [user])
+  );
 
   return (
     <View style={styles.container}>
@@ -40,6 +55,9 @@ const CoursesScreen = ({ user }) => {
           >
             <Text style={styles.buttonText}>
               {course.course_code.replace('_', ' ')}
+              {courseGrades[course.course_code] !== undefined && (
+                <Text style={styles.gradeText}>  {courseGrades[course.course_code] !== null ? `${courseGrades[course.course_code].toFixed(2)}%` : 'N/A'}</Text>
+              )}
             </Text>
           </TouchableOpacity>
         ))}
@@ -85,6 +103,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  gradeText: {
+    color: '#FFD600',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
   },
 });
 

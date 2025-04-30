@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import SegmentedControlTab from 'react-native-segmented-control-tab';
 
 const CourseDetailsScreen = ({ user, route }) => {
   const { className, id } = route.params;
@@ -9,16 +10,31 @@ const CourseDetailsScreen = ({ user, route }) => {
   const [loadingCourseDetails, setLoadingCourseDetails] = useState(true);
   const [assignments, setAssignments] = useState([]);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [gradeStyle, setGradeStyle] = useState('raw');
+  const [gradePlatform, setGradePlatform] = useState('canvas');
+  const [predictedGrade, setPredictedGrade] = useState(null);
+  const [updatingGrade, setUpdatingGrade] = useState(false);
+
+  const gradeStyleOptions = ['Raw', 'Curved (Median)'];
+  const gradePlatformOptions = ['Canvas', 'Gradescope'];
 
   useEffect(() => {
     fetchCourseDetails();
     fetchAllAssignments(id, user.id);
   }, [className]);
 
+  useEffect(() => {
+    if (courseDetails) {
+      setGradeStyle(courseDetails.grade_style || 'raw');
+      setGradePlatform(courseDetails.grade_platform || 'canvas');
+      setPredictedGrade(courseDetails.predicted_grade || null);
+    }
+  }, [courseDetails]);
+
   const fetchCourseDetails = async () => {
     try {
       setLoadingCourseDetails(true);
-      const response = await fetch(`http://10.2.14.245:8000/user_course/${user.uid}/${id}`);
+      const response = await fetch(`http://10.2.14.245:8000/user_course/${user.uid}/${className}`);
       const data = await response.json();
       if (data.course_found) {
         setCourseDetails(data.course_data);
@@ -113,6 +129,109 @@ const CourseDetailsScreen = ({ user, route }) => {
     }
   };
 
+  const calculatePredictedGrade = async () => {
+    if (!courseDetails || !assignments.length) return;
+
+    setUpdatingGrade(true);
+    try {
+      // First update the grade options
+      await fetch('http://10.2.14.245:8000/update_course_grade_options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.uid,
+          class_name: className,
+          grade_style: gradeStyle,
+          grade_platform: gradePlatform,
+        }),
+      });
+
+      // Then calculate grade locally
+      const gradeBreakdown = courseDetails.grade_breakdown || {};
+      
+      // Categorize assignments
+      const categorizeAssignment = (assignmentName) => {
+        const name = assignmentName.toLowerCase();
+        for (const category of Object.keys(gradeBreakdown)) {
+          if (name.includes(category.toLowerCase())) {
+            return category;
+          }
+        }
+        // fallback: try to guess
+        if (name.includes('quiz')) return 'quizzes';
+        if (name.includes('homework') || name.includes('hw')) return 'homework';
+        if (name.includes('midterm')) {
+          return name.includes('1') ? 'midterm_1' : (name.includes('2') ? 'midterm_2' : 'midterm');
+        }
+        if (name.includes('final')) return 'final';
+        return null;
+      };
+
+      // Group assignments by category
+      const categoryScores = {};
+      assignments.forEach(assignment => {
+        if (assignment.score !== undefined && assignment.points_possible) {
+          const category = categorizeAssignment(assignment.name);
+          if (!category) return;
+          
+          const percent = (assignment.score / assignment.points_possible) * 100;
+          if (!categoryScores[category]) {
+            categoryScores[category] = [];
+          }
+          categoryScores[category].push(percent);
+        }
+      });
+
+      // Compute averages per category
+      const categoryAverages = {};
+      Object.entries(categoryScores).forEach(([category, scores]) => {
+        if (scores.length > 0) {
+          categoryAverages[category] = scores.reduce((a, b) => a + b, 0) / scores.length;
+        }
+      });
+
+      // Calculate weighted average
+      let weightedSum = 0;
+      let usedWeights = 0;
+      Object.entries(categoryAverages).forEach(([category, avg]) => {
+        const weightStr = gradeBreakdown[category];
+        if (!weightStr) return;
+        const weight = parseFloat(weightStr.replace('%', ''));
+        weightedSum += avg * weight;
+        usedWeights += weight;
+      });
+
+      let calculatedGrade = null;
+      if (usedWeights > 0) {
+        calculatedGrade = weightedSum / usedWeights;
+      }
+
+      // Apply curve if selected
+      if (gradeStyle === 'curved' && calculatedGrade !== null) {
+        calculatedGrade = 85.0; // Simulate curve by treating as median (B-level)
+      }
+
+      setPredictedGrade(calculatedGrade);
+
+      // Save the predicted grade to backend
+      await fetch('http://10.2.14.245:8000/set_predicted_grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.uid,
+          class_name: className,
+          predicted_grade: calculatedGrade,
+        }),
+      });
+
+    } catch (error) {
+      console.error('Error calculating grade:', error);
+      Alert.alert('Error', 'Failed to calculate grade. Please try again.');
+    } finally {
+      setUpdatingGrade(false);
+    }
+  };
+
   const AssignmentItem = ({ assignment }) => {
     return (
       <View style={styles.assignmentCard}>
@@ -134,6 +253,48 @@ const CourseDetailsScreen = ({ user, route }) => {
     );
   };
   
+  // Helper to render course info prettily
+  const renderCourseInfo = () => {
+    if (!courseDetails) return null;
+    return (
+      <View style={styles.courseInfoCard}>
+        {courseDetails.emails && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Contacts</Text>
+            {Object.entries(courseDetails.emails).map(([role, email]) => (
+              <Text key={role} style={styles.infoSectionText}>
+                {role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {email}
+              </Text>
+            ))}
+          </View>
+        )}
+        {courseDetails.grade_breakdown && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Grade Breakdown</Text>
+            {Object.entries(courseDetails.grade_breakdown).map(([k, v]) => (
+              <Text key={k} style={styles.infoSectionText}>{k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {v}</Text>
+            ))}
+          </View>
+        )}
+        {courseDetails.important_dates && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Important Dates</Text>
+            {Object.entries(courseDetails.important_dates).map(([k, v]) => (
+              <Text key={k} style={styles.infoSectionText}>{k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {v}</Text>
+            ))}
+          </View>
+        )}
+        {courseDetails.office_hours && (
+          <View style={styles.infoSection}>
+            <Text style={styles.infoSectionTitle}>Office Hours</Text>
+            {Object.entries(courseDetails.office_hours).map(([k, v]) => (
+              <Text key={k} style={styles.infoSectionText}>{k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {v}</Text>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   if (loadingCourseDetails || loadingAssignments) {
     return (
@@ -143,18 +304,11 @@ const CourseDetailsScreen = ({ user, route }) => {
     );
   }
 
+  // If no syllabus uploaded, only show upload button
+  if (!courseDetails) {
     return (
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.courseTitle}>{className.replace('_', ' ')}</Text>
-
-        {assignments && assignments.length > 0 ? (
-          assignments.map((assignment, index) => (
-            <AssignmentItem key={index} assignment={assignment} />
-          ))
-        ) : (
-          <Text>No assignments found.</Text>
-        )}
-
         <TouchableOpacity
           onPress={pickDocument}
           style={[styles.uploadButton, { marginTop: 30 }]}
@@ -169,6 +323,94 @@ const CourseDetailsScreen = ({ user, route }) => {
       </ScrollView>
     );
   }
+
+  // Syllabus uploaded: show course info, then assignments
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.courseTitle}>{className.replace('_', ' ')}</Text>
+      {/* Predicted Grade at the top */}
+      <View style={styles.predictedGradeCard}>
+        <Text style={styles.predictedGradeLabel}>Predicted Grade:</Text>
+        {updatingGrade ? (
+          <ActivityIndicator size="small" color="#3B82F6" />
+        ) : (
+          <Text style={styles.predictedGradeValue}>
+            {predictedGrade !== null ? `${predictedGrade.toFixed(2)}%` : 'N/A'}
+          </Text>
+        )}
+      </View>
+      {/* Grade prediction controls */}
+      <View style={styles.gradeOptionsCard}>
+        <Text style={styles.gradeOptionsTitle}>Grade Prediction Options</Text>
+        <View style={styles.segmentedRow}>
+          <Text style={styles.pickerLabel}>Grade Style:</Text>
+          <SegmentedControlTab
+            values={gradeStyleOptions}
+            selectedIndex={gradeStyle === 'raw' ? 0 : 1}
+            onTabPress={index => {
+              const value = index === 0 ? 'raw' : 'curved';
+              setGradeStyle(value);
+            }}
+            tabsContainerStyle={styles.segmentedTab}
+            tabStyle={styles.tabStyle}
+            activeTabStyle={styles.activeTabStyle}
+            tabTextStyle={styles.tabTextStyle}
+            activeTabTextStyle={styles.activeTabTextStyle}
+            enabled={!updatingGrade}
+          />
+        </View>
+        <View style={styles.segmentedRow}>
+          <Text style={styles.pickerLabel}>Platform:</Text>
+          <SegmentedControlTab
+            values={gradePlatformOptions}
+            selectedIndex={gradePlatform === 'canvas' ? 0 : 1}
+            onTabPress={index => {
+              const value = index === 0 ? 'canvas' : 'gradescope';
+              setGradePlatform(value);
+            }}
+            tabsContainerStyle={styles.segmentedTab}
+            tabStyle={styles.tabStyle}
+            activeTabStyle={styles.activeTabStyle}
+            tabTextStyle={styles.tabTextStyle}
+            activeTabTextStyle={styles.activeTabTextStyle}
+            enabled={!updatingGrade}
+          />
+        </View>
+        <TouchableOpacity
+          onPress={calculatePredictedGrade}
+          style={styles.calculateButton}
+          disabled={updatingGrade}
+        >
+          {updatingGrade ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.calculateButtonText}>Calculate Grade</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+      {renderCourseInfo()}
+      <Text style={[styles.sectionTitle, {marginTop: 20}]}>Assignments</Text>
+      {assignments && assignments.length > 0 ? (
+        assignments.map((assignment, index) => (
+          <AssignmentItem key={index} assignment={assignment} />
+        ))
+      ) : (
+        <Text>No assignments found.</Text>
+      )}
+      <TouchableOpacity
+        onPress={pickDocument}
+        style={[styles.uploadButton, { marginTop: 30 }]}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Upload Syllabus File</Text>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
 
 const formatKey = (key) => {
   return key
@@ -252,6 +494,117 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     overflow: 'hidden',
+  },
+  courseInfoCard: {
+    backgroundColor: '#F3F6FB',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  courseInfoTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1A237E',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  infoSection: {
+    marginBottom: 10,
+  },
+  infoSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginBottom: 4,
+  },
+  infoSectionText: {
+    fontSize: 15,
+    color: '#22223B',
+    marginBottom: 2,
+    marginLeft: 8,
+  },
+  gradeOptionsCard: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 18,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  gradeOptionsTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#1565C0',
+    marginBottom: 8,
+  },
+  segmentedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  segmentedTab: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  tabStyle: {
+    borderColor: '#1565C0',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    height: 36,
+  },
+  activeTabStyle: {
+    backgroundColor: '#1565C0',
+  },
+  tabTextStyle: {
+    color: '#1565C0',
+    fontWeight: '500',
+  },
+  activeTabTextStyle: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  predictedGradeCard: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 18,
+    marginTop: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  predictedGradeLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 10,
+  },
+  predictedGradeValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  calculateButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  calculateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
