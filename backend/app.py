@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 import httpx
 from firebase_admin import firestore
 from pydantic import BaseModel
+from gradescopeapi.classes.connection import GSConnection
+import asyncio
 
 
 load_dotenv()
@@ -241,6 +243,149 @@ async def fetch_assignments_with_submissions(course_id: str, user_id: str):
 
     return all_assignments
 
+GRADESCOPE_EMAIL = os.getenv('GRADESCOPE_EMAIL')
+GRADESCOPE_PASSWORD = os.getenv('GRADESCOPE_PASSWORD')
+
+def normalize_course_name(course_name: str) -> str:
+    """
+    Normalize course names for comparison by:
+    1. Converting to uppercase
+    2. Removing common prefixes/suffixes
+    3. Removing special characters and extra spaces
+    """
+    # Convert to uppercase
+    name = course_name.upper()
+    
+    # Remove common prefixes/suffixes and section identifiers
+    prefixes_to_remove = [
+        "SPRING 2024 ", "FALL 2024 ", "SPRING 2025 ", "FALL 2023 ",
+        "SP24 ", "FA24 ", "SP25 ", "FA23 ",
+        "LEC ", "DIS ", "LAB ", "-LEC", "-DIS", "-LAB",
+        "HWS", "EXAMS", "(SPRING 2025)", "(FALL 2024)", "(SPRING 2024)", "(FALL 2023)"
+    ]
+    for prefix in prefixes_to_remove:
+        name = name.replace(prefix.upper(), "")
+    
+    # Remove special characters and normalize spaces
+    import re
+    name = re.sub(r'[^\w\s]', ' ', name)  # Replace special chars with space
+    name = re.sub(r'\s+', ' ', name)      # Normalize multiple spaces to single space
+    
+    # Remove common course number patterns
+    name = re.sub(r'\b\d{3}\/\d{3}\b', '', name)  # Remove patterns like "215/216"
+    
+    return name.strip()
+
+def find_matching_gradescope_course(canvas_course, gradescope_courses):
+    """
+    Find the matching Gradescope course using multiple matching strategies.
+    Returns tuple of (course_id, course) if found, else (None, None)
+    """
+    canvas_name = canvas_course.get("name", "")
+    canvas_code = canvas_course.get("course_code", "")
+    
+    normalized_canvas_name = normalize_course_name(canvas_name)
+    normalized_canvas_code = normalize_course_name(canvas_code)
+    
+    print(f"Canvas course: {canvas_name} ({canvas_code})")
+    print(f"Normalized canvas name: {normalized_canvas_name}")
+    print(f"Normalized canvas code: {normalized_canvas_code}")
+    
+    best_match = (None, None)
+    
+    for course_id, gs_course in gradescope_courses.items():
+        # Try matching against both name and full_name
+        gs_name = gs_course.name
+        gs_full_name = gs_course.full_name
+        
+        normalized_gs_name = normalize_course_name(gs_name)
+        normalized_gs_full_name = normalize_course_name(gs_full_name)
+        
+        print(f"Comparing with Gradescope course: {gs_name} ({gs_full_name})")
+        print(f"Normalized Gradescope name: {normalized_gs_name}")
+        print(f"Normalized Gradescope full name: {normalized_gs_full_name}")
+        
+        # Check for exact matches first
+        if (normalized_canvas_name in normalized_gs_name or 
+            normalized_canvas_name in normalized_gs_full_name or
+            normalized_canvas_code in normalized_gs_name or
+            normalized_canvas_code in normalized_gs_full_name):
+            
+            # Prefer current semester courses
+            if gs_course.semester == "Spring" and gs_course.year == "2025":
+                print(f"Found current semester match: {gs_name}")
+                return course_id, gs_course
+            elif best_match == (None, None):
+                best_match = (course_id, gs_course)
+    
+    return best_match
+
+async def fetch_gradescope_assignments(course_id: str):
+    try:
+        # Create Gradescope connection
+        connection = GSConnection()
+        connection.login(GRADESCOPE_EMAIL, GRADESCOPE_PASSWORD)
+        
+        # Get all courses
+        courses = connection.account.get_courses()
+        gradescope_courses = courses.get("student", {})
+        print(f"Found {len(gradescope_courses)} Gradescope courses")
+        
+        # Get Canvas course details
+        canvas_course = next((c for c in await fetch_all_courses() if str(c["id"]) == course_id), None)
+        if not canvas_course:
+            print(f"Canvas course not found for ID: {course_id}")
+            return []
+        
+        # Find matching course
+        gs_course_id, matching_course = find_matching_gradescope_course(canvas_course, gradescope_courses)
+        
+        if not matching_course:
+            print(f"No matching Gradescope course found for: {canvas_course.get('name')}")
+            return []
+            
+        print(f"Found matching course: {matching_course.name} ({matching_course.full_name})")
+        
+        # Get assignments for the course using the course_id from the dictionary key
+        assignments = connection.account.get_assignments(gs_course_id)
+        
+        # Format assignments to match Canvas format
+        formatted_assignments = []
+        for assignment in assignments:
+            formatted_assignment = {
+                "id": f"gs_{assignment.assignment_id}",
+                "name": assignment.name,
+                "points_possible": assignment.max_grade,
+                "due_at": assignment.due_date.isoformat() if assignment.due_date else None,
+                "source": "gradescope",
+                "status": assignment.submissions_status,
+                "late_due_date": assignment.late_due_date.isoformat() if assignment.late_due_date else None,
+                "release_date": assignment.release_date.isoformat() if assignment.release_date else None
+            }
+            
+            # Add score if available and submitted
+            if hasattr(assignment, 'grade') and assignment.grade is not None:
+                formatted_assignment["score"] = assignment.grade
+            
+            formatted_assignments.append(formatted_assignment)
+            
+        print(f"Found {len(formatted_assignments)} Gradescope assignments")
+        return formatted_assignments
+        
+    except Exception as e:
+        print(f"Error fetching Gradescope assignments: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return []
+
+@app.get("/get_gradescope_assignments")
+async def get_gradescope_assignments(course_id: str = Query(...)):
+    try:
+        assignments = await fetch_gradescope_assignments(course_id)
+        return {"assignments": assignments}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching Gradescope assignments: {str(e)}")
+
 @app.get("/get_assignments")
 async def get_assignments(course_id: str = Query(...), user_id: str = Query(...)):
     try:
@@ -254,6 +399,7 @@ async def get_assignments(course_id: str = Query(...), user_id: str = Query(...)
                 "name": assignment.get("name"),
                 "points_possible": assignment.get("points_possible"),
                 "due_at": assignment.get("due_at"),
+                "source": "canvas"  # Add source field
             }
 
             # Safely handle missing submission

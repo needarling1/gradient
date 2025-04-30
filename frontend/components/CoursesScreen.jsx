@@ -10,7 +10,7 @@ const CoursesScreen = ({ user }) => {
 
   async function fetchCourses(user) {
     try {
-      const response = await fetch(`http://10.2.14.234:8000/get_user_courses?user_id=${user.uid}`);
+      const response = await fetch(`http://10.2.14.245:8000/get_user_courses?user_id=${user.uid}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setCourses(data);

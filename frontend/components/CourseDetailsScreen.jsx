@@ -12,13 +12,13 @@ const CourseDetailsScreen = ({ user, route }) => {
 
   useEffect(() => {
     fetchCourseDetails();
-    fetchAssignments(id, user.id);
+    fetchAllAssignments(id, user.id);
   }, [className]);
 
   const fetchCourseDetails = async () => {
     try {
       setLoadingCourseDetails(true);
-      const response = await fetch(`http://10.2.14.234:8000/user_course/${user.uid}/${id}`);
+      const response = await fetch(`http://10.2.14.245:8000/user_course/${user.uid}/${id}`);
       const data = await response.json();
       if (data.course_found) {
         setCourseDetails(data.course_data);
@@ -49,21 +49,33 @@ const CourseDetailsScreen = ({ user, route }) => {
     }
   };
 
-  const fetchAssignments = async (courseId, userId) => {
+  const fetchAllAssignments = async (courseId, userId) => {
     try {
       setLoadingAssignments(true);
       setAssignments([]);
-      const response = await fetch(`http://10.2.14.234:8000/get_assignments?course_id=${courseId}&user_id=${userId}`);
-      const data = await response.json();
-      console.log(data.assignments)
-      setAssignments(data.assignments);
+      
+      // Fetch both Canvas and Gradescope assignments in parallel
+      const [canvasResponse, gradescopeResponse] = await Promise.all([
+        fetch(`http://10.2.14.245:8000/get_assignments?course_id=${courseId}&user_id=${userId}`),
+        fetch(`http://10.2.14.245:8000/get_gradescope_assignments?course_id=${courseId}`)
+      ]);
+
+      const canvasData = await canvasResponse.json();
+      const gradescopeData = await gradescopeResponse.json();
+
+      // Combine assignments from both sources
+      const allAssignments = [
+        ...canvasData.assignments,
+        ...gradescopeData.assignments
+      ];
+
+      setAssignments(allAssignments);
     } catch (error) {
       console.error('Error fetching assignments:', error);
     } finally {
       setLoadingAssignments(false);
     }
   };
-
 
   const uploadFile = async (file) => {
     try {
@@ -78,7 +90,7 @@ const CourseDetailsScreen = ({ user, route }) => {
       formData.append('user_id', user.uid);
       formData.append('class_name', className);
 
-      const response = await fetch('http://10.2.14.234:8000/syllabus-parse', {
+      const response = await fetch('http://10.2.14.245:8000/syllabus-parse', {
         method: 'POST',
         body: formData,
         headers: {
@@ -104,7 +116,13 @@ const CourseDetailsScreen = ({ user, route }) => {
   const AssignmentItem = ({ assignment }) => {
     return (
       <View style={styles.assignmentCard}>
-        <Text style={styles.assignmentTitle}>{assignment.name}</Text>
+        <View style={styles.assignmentHeader}>
+          <Text style={styles.assignmentTitle}>{assignment.name}</Text>
+          <Text style={[styles.sourceTag, 
+            { color: assignment.source === 'canvas' ? '#2D9CDB' : '#27AE60' }]}>
+            {assignment.source}
+          </Text>
+        </View>
         {assignment.score !== undefined ? (
           <Text style={styles.assignmentScore}>
             {assignment.score} / {assignment.points_possible}
@@ -221,6 +239,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
   },  
+  assignmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sourceTag: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
 });
 
 export default CourseDetailsScreen;
