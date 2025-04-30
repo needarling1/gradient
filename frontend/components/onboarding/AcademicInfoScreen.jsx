@@ -130,10 +130,7 @@ export default function AcademicInfoScreen({ navigation, formData, updateFormDat
   };
 
   return (
-    <ScrollView 
-      style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={styles.contentContainer}
-    >
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -259,7 +256,7 @@ export default function AcademicInfoScreen({ navigation, formData, updateFormDat
         <Text style={styles.buttonText}>Continue</Text>
         <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
 

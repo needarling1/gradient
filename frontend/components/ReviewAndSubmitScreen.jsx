@@ -7,11 +7,13 @@ import {
   Image,
   Animated,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BACKEND_URL } from '../config';
 
-export default function ReviewAndSubmitScreen({ navigation, formData, onComplete }) {
+export default function ReviewAndSubmitScreen({ navigation, formData, onComplete, userId }) {
   const insets = useSafeAreaInsets();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(20)).current;
@@ -51,9 +53,49 @@ export default function ReviewAndSubmitScreen({ navigation, formData, onComplete
     </Animated.View>
   );
 
-  const handleSubmit = () => {
-    console.log('Final Submission:', formData);
-    if (onComplete) onComplete(formData);
+  const handleSubmit = async () => {
+    try {
+      if (!userId) {
+        Alert.alert('Error', 'User ID is required to complete onboarding');
+        return;
+      }
+
+      // Ensure majors and departments are always arrays and departments is flat
+      const flatten = (arr) => Array.isArray(arr) ? arr.flat(Infinity) : [];
+      const payload = {
+        user_id: userId,
+        ...formData,
+        majors: Array.isArray(formData.majors) ? formData.majors : [],
+        departments: flatten(formData.departments),
+      };
+      console.log('Submitting onboarding data:', payload);
+
+      const response = await fetch(`${BACKEND_URL}/onboard_user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save onboarding data');
+      }
+
+      await response.json();
+      console.log('Onboarding data saved successfully');
+      
+      if (onComplete) {
+        onComplete(formData);
+      }
+    } catch (error) {
+      console.error('Error during onboarding:', error);
+      Alert.alert(
+        'Error',
+        'Failed to complete onboarding. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (

@@ -12,6 +12,7 @@ from firebase_admin import firestore
 from pydantic import BaseModel
 from gradescopeapi.classes.connection import GSConnection
 import asyncio
+from typing import Optional
 
 
 load_dotenv()
@@ -30,6 +31,29 @@ app.add_middleware(
 class UserCreateRequest(BaseModel):
     user_id: str
     email: str
+
+class OnboardingRequest(BaseModel):
+    user_id: str
+    firstName: str
+    lastName: str
+    majors: list[str]
+    departments: list[str]
+    gpa: str
+    graduationYear: str
+    bcourseToken: str
+    profileImage: str = None
+
+class UpdateGradeOptionsRequest(BaseModel):
+    user_id: str
+    class_name: str
+    grade_style: str  # 'raw' or 'curved'
+    grade_platform: str  # 'canvas' or 'gradescope'
+    predicted_grade: Optional[float] = None
+
+class SetPredictedGradeRequest(BaseModel):
+    user_id: str
+    class_name: str
+    predicted_grade: float
 
 @app.post("/create_user")
 async def create_user(user: UserCreateRequest):
@@ -50,6 +74,33 @@ async def create_user(user: UserCreateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
+
+@app.post("/onboard_user")
+async def onboard_user(onboarding: OnboardingRequest):
+    try:
+        user_ref = db.collection('users').document(onboarding.user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Update user document with onboarding information
+        user_ref.update({
+            "firstName": onboarding.firstName,
+            "lastName": onboarding.lastName,
+            "majors": onboarding.majors,
+            "departments": onboarding.departments,
+            "gpa": onboarding.gpa,
+            "graduationYear": onboarding.graduationYear,
+            "bcourseToken": onboarding.bcourseToken,
+            "profileImage": onboarding.profileImage,
+            "hasOnboarded": True
+        })
+
+        return {"message": "User onboarding completed successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating user: {str(e)}")
 
 @app.post("/syllabus-parse")
 async def parse_syllabus(
@@ -415,3 +466,65 @@ async def get_assignments(course_id: str = Query(...), user_id: str = Query(...)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching assignments: {str(e)}")
+
+@app.get("/check_onboarding/{user_id}")
+async def check_onboarding(user_id: str):
+    try:
+        user_ref = db.collection('users').document(user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_data = user_doc.to_dict()
+        return {
+            "hasOnboarded": user_data.get("hasOnboarded", False),
+            "userData": {
+                "firstName": user_data.get("firstName"),
+                "lastName": user_data.get("lastName"),
+                "majors": user_data.get("majors", []),
+                "departments": user_data.get("departments", []),
+                "gpa": user_data.get("gpa"),
+                "graduationYear": user_data.get("graduationYear"),
+                "profileImage": user_data.get("profileImage")
+            } if user_data.get("hasOnboarded", False) else None
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking onboarding status: {str(e)}")
+
+@app.get("/user_info/{user_id}")
+async def get_user_info(user_id: str):
+    try:
+        user_ref = db.collection('users').document(user_id)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user_doc.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching user info: {str(e)}")
+
+@app.post("/update_course_grade_options")
+async def update_course_grade_options(options: UpdateGradeOptionsRequest):
+    try:
+        update_data = {
+            "grade_style": options.grade_style,
+            "grade_platform": options.grade_platform
+        }
+        if options.predicted_grade is not None:
+            update_data["predicted_grade"] = options.predicted_grade
+        course_ref = db.collection('users').document(options.user_id).collection('courses').document(options.class_name)
+        course_ref.set(update_data, merge=True)
+        return {"message": "Grade options updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating grade options: {str(e)}")
+
+@app.post("/set_predicted_grade")
+async def set_predicted_grade(data: SetPredictedGradeRequest):
+    try:
+        course_ref = db.collection('users').document(data.user_id).collection('courses').document(data.class_name)
+        course_ref.set({"predicted_grade": data.predicted_grade}, merge=True)
+        return {"message": "Predicted grade updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating predicted grade: {str(e)}")
+

@@ -1,4 +1,3 @@
-
 import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import {
@@ -21,7 +20,7 @@ const index = () => {
   const [user, setUser] = useState();
   const [showSplash, setShowSplash] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
-  const [hasOnboarded, setHasOnboarded] = useState(null); 
+  const [hasOnboarded, setHasOnboarded] = useState(null);
 
   GoogleSignin.configure({
     webClientId: '817318853256-4q5u1t8o277kt39a57gfvms6q56ueg2b.apps.googleusercontent.com',
@@ -51,7 +50,7 @@ const index = () => {
 
   async function createUserIfNotExists(user) {
     try {
-      const response = await fetch('http://10.40.141.162:8000/create_user', {
+      const response = await fetch('http://10.2.14.245:8000/create_user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,35 +68,51 @@ const index = () => {
     }
   }
 
+  async function checkOnboardingStatus(userId) {
+    try {
+      if (!userId) {
+        setHasOnboarded(false);
+        return;
+      }
+      const response = await fetch(`http://10.2.14.245:8000/check_onboarding/${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to check onboarding status');
+      }
+      const data = await response.json();
+      setHasOnboarded(!!data.hasOnboarded);
+      if (data.hasOnboarded && data.userData) {
+        setUserProfile(data.userData);
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      setHasOnboarded(false);
+    }
+  }
+
   async function onAuthStateChanged(user) {
     setUser(user);
     if (user) {
-      await createUserIfNotExists(user);  // call new API here
+      await createUserIfNotExists(user);
+      await checkOnboardingStatus(user.uid);
+    } else {
+      setHasOnboarded(null);
+      setUserProfile(null);
     }
     if (initializing) setInitializing(false);
   }
 
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
-
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
     }, 3000);
-
-    const checkOnboardingStatus = async () => {
-      const onboarded = await AsyncStorage.getItem('hasOnboarded'); // ✅ NEW
-      setHasOnboarded(onboarded === 'true');
-    };
-
-    checkOnboardingStatus(); // ✅ NEW
-
     return () => {
       subscriber();
       clearTimeout(splashTimer);
     };
   }, []);
 
-  if (initializing || showSplash || hasOnboarded === null) return <SplashScreen />; // ✅ MODIFIED
+  if (initializing || showSplash || hasOnboarded === null) return <SplashScreen />;
 
   if (!user) {
     return (
@@ -107,13 +122,14 @@ const index = () => {
     );
   }
 
-  if (user && !hasOnboarded) { // ✅ MODIFIED
+  if (user && !hasOnboarded) {
     return (
       <NavigationContainer>
         <OnboardingNavigator
+          userId={user.uid}
           onComplete={(profile) => {
             setUserProfile(profile);
-            setHasOnboarded(true); // ✅ NEW
+            setHasOnboarded(true);
           }}
         />
       </NavigationContainer>

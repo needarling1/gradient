@@ -18,7 +18,7 @@ export default function PersonalInfoScreen({ navigation, formData, updateFormDat
   const pickImage = () => {
     ImagePicker.launchImageLibrary(
       { 
-        mediaType: 'photo',
+        mediaType: ImagePicker.MediaType.photo,
         quality: 1,
       }, 
       (response) => {
