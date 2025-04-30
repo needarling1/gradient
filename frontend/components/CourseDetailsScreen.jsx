@@ -237,10 +237,6 @@ const CourseDetailsScreen = ({ user, route }) => {
       <View style={styles.assignmentCard}>
         <View style={styles.assignmentHeader}>
           <Text style={styles.assignmentTitle}>{assignment.name}</Text>
-          <Text style={[styles.sourceTag, 
-            { color: assignment.source === 'canvas' ? '#2D9CDB' : '#27AE60' }]}>
-            {assignment.source}
-          </Text>
         </View>
         {assignment.score !== undefined ? (
           <Text style={styles.assignmentScore}>
@@ -249,6 +245,10 @@ const CourseDetailsScreen = ({ user, route }) => {
         ) : (
           <Text style={styles.assignmentScore}>Not yet graded</Text>
         )}
+        <Text style={[styles.sourceTag, 
+            { color: assignment.source === 'canvas' ? '#2D9CDB' : '#27AE60' }]}>
+            {assignment.source}
+          </Text>
       </View>
     );
   };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import LinearGradient from 'react-native-linear-gradient';
 
 const CoursesScreen = ({ user }) => {
   const [courses, setCourses] = useState([]);
@@ -44,71 +45,128 @@ const CoursesScreen = ({ user }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Classes</Text>
-
-      <ScrollView contentContainerStyle={styles.buttonContainer}>
-        {courses.map((course) => (
-          <TouchableOpacity
-            key={course.id}
-            style={styles.button}
-            onPress={() => navigation.navigate('CourseDetails', { id: course.id, className: course.course_code })}
-          >
-            <Text style={styles.buttonText}>
-              {course.course_code.replace('_', ' ')}
-              {courseGrades[course.course_code] !== undefined && (
-                <Text style={styles.gradeText}>  {courseGrades[course.course_code] !== null ? `${courseGrades[course.course_code].toFixed(2)}%` : 'N/A'}</Text>
-              )}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <Text style={styles.title}>Home</Text>
+      <Text style={styles.subtitle}>Track your courses and grades</Text>
+      <ScrollView contentContainerStyle={styles.cardsContainer}>
+        <View style={styles.rowContainer}>
+          {courses.map((course, idx) => (
+            <View key={course.id} style={styles.cardColumn}>
+              <TouchableOpacity
+                style={styles.cardWrapper}
+                onPress={() => navigation.navigate('CourseDetails', { id: course.id, className: course.course_code })}
+              >
+                <View style={styles.card}>
+                  <LinearGradient
+                    colors={["#2196F3", "#1565C0"]}
+                    style={styles.cardTop}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={styles.gradeText}>
+                      {courseGrades[course.course_code] !== undefined
+                        ? `${courseGrades[course.course_code].toFixed(2)}%`
+                        : 'N/A'}
+                    </Text>
+                  </LinearGradient>
+                  <View style={styles.cardBottom}>
+                    <Text style={styles.courseCode}>{course.course_code.replace('_', ' ')}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
+  container: {
     flex: 1,
-    justifyContent: 'center',  // ⬅️ center vertically
-    alignItems: 'center',       // ⬅️ center horizontally
-    paddingTop: 80,
-    padding: 20,
     backgroundColor: '#fff',
+    paddingTop: 60,
+    paddingHorizontal: 16,
   },
-  title: { 
-    fontSize: 24,
+  title: {
+    color: '#222',
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
+    marginBottom: 4,
+    textAlign: 'left',
   },
-  buttonContainer: {
-    alignItems: 'center',
+  subtitle: {
+    color: '#555',
+    fontSize: 16,
+    marginBottom: 24,
+    textAlign: 'left',
+  },
+  cardsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     paddingBottom: 50,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginVertical: 10,
-    width: 250,              // ⬅️ Wider buttons look better centered
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+  rowContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  cardColumn: {
+    width: '46%',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginHorizontal: '2%',
+  },
+  cardWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  card: {
+    width: '100%',
+    minHeight: 240,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    borderWidth: 0, 
+    shadowColor: '#000',
+    shadowOpacity: 0.2, 
+    shadowRadius: 2,    
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    marginVertical: 10,
+  },
+  cardTop: {
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+  },
+  cardBottom: {
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    flex: 0,
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e3eafc',
   },
   gradeText: {
-    color: '#FFD600',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: 8,
+    color: '#fff',
+    fontSize: 38,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(21,101,192,0.18)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 0,
+  },
+  courseCode: {
+    color: '#000000',
+    fontSize: 20,
+    fontWeight: 400,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });
 

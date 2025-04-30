@@ -81,6 +81,8 @@ async def create_user(user: UserCreateRequest):
 @app.post("/onboard_user")
 async def onboard_user(onboarding: OnboardingRequest):
     try:
+        print(f"Received onboarding majors: {onboarding.majors} (type: {type(onboarding.majors)})")
+        print(f"Received onboarding departments: {onboarding.departments} (type: {type(onboarding.departments)})")
         user_ref = db.collection('users').document(onboarding.user_id)
         user_doc = user_ref.get()
 
@@ -99,6 +101,9 @@ async def onboard_user(onboarding: OnboardingRequest):
 
         majors = normalize_list(onboarding.majors)
         departments = normalize_list(onboarding.departments)
+
+        print(f"Normalized majors: {majors}")
+        print(f"Normalized departments: {departments}")
 
         # Update user document with onboarding information
         user_ref.update({

@@ -204,20 +204,15 @@ export default function AcademicInfoScreen({ navigation, formData, updateFormDat
           </View>
           {majorSuggestions.length > 0 && (
             <View style={styles.suggestionsContainer}>
-              <FlatList
-                data={majorSuggestions}
-                keyExtractor={(item, index) => `major-${index}`}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.suggestionItem}
-                    onPress={() => selectMajor(item)}
-                  >
-                    <Text style={styles.suggestionText}>{item}</Text>
-                  </TouchableOpacity>
-                )}
-                nestedScrollEnabled
-                style={styles.suggestionsList}
-              />
+              {majorSuggestions.map((item, index) => (
+                <TouchableOpacity
+                  key={`major-${index}`}
+                  style={styles.suggestionItem}
+                  onPress={() => selectMajor(item)}
+                >
+                  <Text style={styles.suggestionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           )}
           <View style={styles.tagsContainer}>
