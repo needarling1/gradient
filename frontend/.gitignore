@@ -38,10 +38,7 @@ yarn-error.*
 app-example
 
 # iOS
-ios/build/
-ios/Pods/
-ios/DerivedData/
-ios/frontend.xcodeproj/project.pbxproj
+ios/
 *.xcuserdata
 *.xcuserstate
 *.xcworkspace/xcuserdata/
@@ -52,8 +49,5 @@ ios/frontend.xcodeproj/project.pbxproj
 *.xccheckout
 
 # Android
-android/build/
-android/app/build/
-android/.gradle/
-android/.idea/
+android/
 
