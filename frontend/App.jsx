@@ -51,7 +51,7 @@ const index = () => {
 
   async function createUserIfNotExists(user) {
     try {
-      const response = await fetch('http://10.2.14.234:8000/create_user', {
+      const response = await fetch('http://10.40.141.162:8000/create_user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

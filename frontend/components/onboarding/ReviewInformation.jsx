@@ -6,12 +6,23 @@ import {
   TouchableOpacity,
   Image,
   Animated,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function ReviewAndSubmitScreen({ navigation, formData, onComplete }) {
+export const ReviewInformation = ({ 
+  navigation, 
+  formData = {
+    firstName: '',
+    lastName: '',
+    profileImage: null,
+    majors: [],
+    departments: [],
+    gpa: '',
+    graduationYear: '',
+    bcoursesToken: '',
+  }
+}) => {
   const insets = useSafeAreaInsets();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(20)).current;
@@ -51,11 +62,6 @@ export default function ReviewAndSubmitScreen({ navigation, formData, onComplete
     </Animated.View>
   );
 
-  const handleSubmit = () => {
-    console.log('Final Submission:', formData);
-    if (onComplete) onComplete(formData);
-  };
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -68,36 +74,34 @@ export default function ReviewAndSubmitScreen({ navigation, formData, onComplete
         <Text style={styles.title}>Review Information</Text>
       </View>
 
-      <View style={styles.mainContent}>
-        <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.profileSection}>
-            {formData.profileImage ? (
-              <Image
-                source={{ uri: formData.profileImage }}
-                style={styles.profileImage}
-              />
-            ) : (
-              <View style={[styles.profileImage, styles.defaultAvatar]}>
-                <Ionicons name="person" size={50} color="#3B82F6" />
-              </View>
-            )}
-            <Text style={styles.name}>
-              {formData.firstName} {formData.lastName}
-            </Text>
-          </View>
+      <View style={styles.content}>
+        <View style={styles.profileSection}>
+          <Image
+            source={
+              formData.profileImage
+                ? { uri: formData.profileImage }
+                : require('../../assets/images/default_avatar.png')
+            }
+            style={styles.profileImage}
+          />
+          <Text style={styles.name}>
+            {formData.firstName} {formData.lastName}
+          </Text>
+        </View>
 
-          <View style={styles.infoSection}>
-            {renderInfoItem('Major(s)', formData.majors, 'school-outline')}
-            {renderInfoItem('Department(s)', formData.departments, 'business-outline')}
-            {renderInfoItem('GPA', formData.gpa, 'stats-chart-outline')}
-            {renderInfoItem('Graduation Year', formData.graduationYear, 'calendar-outline')}
-            {renderInfoItem('bCourses Token', '••••••••', 'key-outline')}
-          </View>
-        </ScrollView>
+        <View style={styles.infoSection}>
+          {renderInfoItem('Major(s)', formData.majors, 'school-outline')}
+          {renderInfoItem('Department(s)', formData.departments, 'business-outline')}
+          {renderInfoItem('GPA', formData.gpa, 'stats-chart-outline')}
+          {renderInfoItem('Graduation Year', formData.graduationYear, 'calendar-outline')}
+          {renderInfoItem('bCourses Token', '••••••••', 'key-outline')}
+        </View>
 
         <TouchableOpacity
           style={styles.submitButton}
-          onPress={handleSubmit}
+          onPress={() => {
+            // Handle submission
+          }}
         >
           <Text style={styles.submitButtonText}>Submit</Text>
           <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
@@ -105,7 +109,7 @@ export default function ReviewAndSubmitScreen({ navigation, formData, onComplete
       </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -125,78 +129,66 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#111827',
   },
-  mainContent: {
+  content: {
     flex: 1,
-    paddingHorizontal: 24,
-  },
-  scrollContent: {
-    flex: 1,
+    padding: 20,
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 32,
+    marginBottom: 24,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 16,
-  },
-  defaultAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 12,
     backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   name: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
     textAlign: 'center',
   },
   infoSection: {
-    gap: 8,
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    paddingBottom: 0,
+    gap: 12,
   },
   infoCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   infoLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: '#6B7280',
     marginLeft: 8,
   },
   infoValue: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#111827',
     fontWeight: '500',
-    marginLeft: 32,
   },
   submitButton: {
     backgroundColor: '#3B82F6',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 14,
+    padding: 16,
     borderRadius: 12,
+    marginTop: 'auto',
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -205,11 +197,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    marginTop: 1,
-    marginBottom: 16,
   },
   submitButtonText: {
     color: '#FFFFFF',
@@ -217,4 +204,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 8,
   },
-});
+}); 
