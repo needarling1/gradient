@@ -3,6 +3,7 @@ import HomeScreen from "./components/HomeScreen";
 import MajorTrackerScreen from "./components/MajorTrackerScreen";
 import ToDoScreen from "./components/ToDoScreen";
 import ProfileScreen from "./components/ProfileScreen";
+import ThreeDScreen from "./components/ThreeDScreen";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import React from 'react';
@@ -28,6 +29,8 @@ export default function AppContent({ user }) {
               iconName = focused ? 'school' : 'school-outline';
             } else if (route.name === 'Profile') {
               iconName = focused ? 'person' : 'person-outline';
+            } else if (route.name === '3D') {
+              iconName = focused ? 'cube' : 'cube-outline';
             }
 
             return <Ionicons name={iconName} size={size} color={color} />;
