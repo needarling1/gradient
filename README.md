@@ -41,10 +41,3 @@ The Berkeley Student Dashboard is a cross-platform mobile application that aggre
 | 🤖 AI Agent | [OpenAI API](https://platform.openai.com/) |
 
 ---
-
-## 🧰 Installation & Setup
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/yourusername/berkeley-student-dashboard.git
-cd berkeley-student-dashboard
