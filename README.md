@@ -1,4 +1,4 @@
-# 📊 Berkeley Student Dashboard
+# 📊 Syllo
 
 > 🚀 A mobile app built for UC Berkeley students to **track grades, monitor academic standing, and forecast final outcomes** — all in one place.
 
