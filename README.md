@@ -33,7 +33,7 @@ The Berkeley Student Dashboard is a cross-platform mobile application that aggre
 |------|------------|
 | 📱 Frontend | [React Native](https://reactnative.dev/) |
 | 🧠 Backend API | [FastAPI](https://fastapi.tiangolo.com/) |
-| ☁️ Database & Auth | [Firebase](https://firebase.google.com/) |
+| ☁️ Database & Auth | [PostgreSQL](https://www.postgresql.org/) |
 | 🔗 External Integrations | Canvas API, Gradescope API |
 | 🤖 AI Agent | [OpenAI API](https://platform.openai.com/) |
 
