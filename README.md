@@ -23,7 +23,7 @@ The Berkeley Student Dashboard is a cross-platform mobile application that aggre
 | 📊 **GPA & Standing Tracker** | Automatically calculates term and cumulative GPA with dynamic visualizations. |
 | 🤖 **AI Grade Estimator** | Uses OpenAI API to analyze grading patterns and estimate your current and projected scores. |
 | 📱 **Mobile-First UI** | Built with React Native for smooth performance on iOS and Android. |
-| ☁️ **Cloud Sync** | Stores user data securely with Firebase and syncs across devices. |
+| ☁️ **Cloud Sync** | Stores user data securely with PostgreSQL and syncs across devices. |
 
 ---
 
